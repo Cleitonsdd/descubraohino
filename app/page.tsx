@@ -42,7 +42,7 @@ export default function AcerteOHinoApp() {
   "/audios/Hino 23 - O Senhor é o meu Pastor.mp3",
   "/audios/Hino 231 Provemos irmãos_ do amor do Senhor.mp3",
   "/audios/Hino 235 - Um amor Imenso .mp3",
-  "/audios/Hino 236 Há um lugar de eterna Paz.mp3",
+  "/audios/Hino 236 da CCB.mp3",
   "/audios/Hino 237 da CCB_ Deus é Por Mim.mp3",
   "/audios/Hino 238 da CCB_ Teu Servo ouve fala Senhor.mp3",
   "/audios/Hino 239 da CCB_ Eis Que a Noite é Passada.mp3",
@@ -112,21 +112,21 @@ export default function AcerteOHinoApp() {
             ?.replace(".mp3", "")
             ?.replace(/_/g, " ") || `Hino ${i + 1}`,
         audio: audios[i],
-        opcoes: embaralhar([
-          audios[i]?.split("/").pop()?.replace(".mp3", "") || "Hino",
-          audios[(i + 1) % audios.length]
-            ?.split("/")
-            .pop()
-            ?.replace(".mp3", "") || "Hino",
-          audios[(i + 2) % audios.length]
-            ?.split("/")
-            .pop()
-            ?.replace(".mp3", "") || "Hino",
-          audios[(i + 3) % audios.length]
-            ?.split("/")
-            .pop()
-            ?.replace(".mp3", "") || "Hino",
-        ]),
+        opcoes: embaralhar(
+          [
+            audios[i], // resposta correta
+
+            ...embaralhar(
+              audios.filter((_, index) => index !== i)
+            ).slice(0, 3) // pega 3 erradas aleatórias
+          ].map((audio) =>
+            audio
+              .split("/")
+              .pop()
+              ?.replace(".mp3", "")
+              ?.replace(/_/g, " ") || "Hino"
+          )
+        ),
       })),
     []
   );
@@ -168,15 +168,15 @@ export default function AcerteOHinoApp() {
       case "VISITANTE":
         return "/images/visitante.png";
       case "ALMA SEDENTA":
-        return "/images/alma-sedenta.png";
+        return "/images/almasedenta.png";
       case "TESTEMUNHADO":
         return "/images/testemunhado.png";
       case "NOVO BATIZADO":
-        return "/images/novo-batizado.png";
+        return "/images/novobatizado.png";
       case "VELHO NA GRAÇA":
-        return "/images/velho-na-graca.png";
+        return "/images/velhonagraca.png";
       case "NASCIDO NA GRAÇA":
-        return "/images/nascido-na-graca.png";
+        return "/images/nascidonagraca.png";
       case "ANCIÃO":
         return "/images/anciao.png";
       default:
@@ -246,7 +246,7 @@ const [tempoNivel, setTempoNivel] = useState(100);
     audioRef.current?.pause();
     if (audioRef.current) audioRef.current.currentTime = 0;
 
-    const limparTexto = (texto: string) => texto.toLowerCase().trim().replace(/_/g, " ").replace(/\\s+/g, " ");
+    const limparTexto = (texto: string) => texto.toLowerCase().trim().replace(/_/g, " ").replace(/\s+/g, " ");
 
     const acertou = limparTexto(opcao) === limparTexto(atual.resposta);
 
