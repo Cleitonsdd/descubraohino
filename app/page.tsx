@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import React, { useMemo, useRef, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 export default function AcerteOHinoApp() {
   function embaralhar(arr: string[]) {
     return [...arr].sort(() => Math.random() - 0.5);
   }
 
-  // Substitua os caminhos abaixo pelos seus arquivos MP3 reais
-  // Exemplo: '/audios/hino01.mp3'
-  // IMPORTANTE:
-  // Coloque aqui exatamente os nomes reais dos arquivos da pasta /public/audios
-  // As opções de resposta serão geradas com base nesses nomes originais
+  // MANTENHA AQUI SUA LISTA COMPLETA DE AUDIOS
   const audios = [
   "/audios/Hino 01 CRISTO MEU MESTRE.mp3",
   "/audios/Hino 05 - A Rocha celestial.mp3",
@@ -46,7 +42,7 @@ export default function AcerteOHinoApp() {
   "/audios/Hino 23 - O Senhor é o meu Pastor.mp3",
   "/audios/Hino 231 Provemos irmãos_ do amor do Senhor.mp3",
   "/audios/Hino 235 - Um amor Imenso .mp3",
-  "/audios/Hino 236 da CCB.mp3",
+  "/audios/Hino 236 Há um lugar de eterna Paz.mp3",
   "/audios/Hino 237 da CCB_ Deus é Por Mim.mp3",
   "/audios/Hino 238 da CCB_ Teu Servo ouve fala Senhor.mp3",
   "/audios/Hino 239 da CCB_ Eis Que a Noite é Passada.mp3",
@@ -103,62 +99,90 @@ export default function AcerteOHinoApp() {
   "/audios/Hino 76 - Cristo Jesus sua mão me dá.mp3",
   "/audios/Hino 79 da CCB - Bom é estarmos nós aqui.mp3",
   "/audios/Hino 89 Oh Grande Deus.mp3"
-];
+  ];
 
   const perguntas = useMemo(
     () =>
       Array.from({ length: audios.length }, (_, i) => ({
         id: i + 1,
-        resposta: audios[i]
-          .split('/')
-          .pop()
-          ?.replace('.mp3', '')
-          ?.replace(/_/g, ' ') || audios[i]
-          .split('/')
-          .pop()
-          ?.replace('.mp3', '')
-          ?.replace(/_/g, ' ') || `Hino ${String(i + 1).padStart(2, '0')}`,
+        resposta:
+          audios[i]
+            ?.split("/")
+            .pop()
+            ?.replace(".mp3", "")
+            ?.replace(/_/g, " ") || `Hino ${i + 1}`,
         audio: audios[i],
         opcoes: embaralhar([
-          audios[i]
-            .split('/')
-            .pop()
-            ?.replace('.mp3', '')
-            ?.replace(/_/g, ' ') || 'Hino',
+          audios[i]?.split("/").pop()?.replace(".mp3", "") || "Hino",
           audios[(i + 1) % audios.length]
-            .split('/')
+            ?.split("/")
             .pop()
-            ?.replace('.mp3', '')
-            ?.replace(/_/g, ' ') || 'Hino',
+            ?.replace(".mp3", "") || "Hino",
           audios[(i + 2) % audios.length]
-            .split('/')
+            ?.split("/")
             .pop()
-            ?.replace('.mp3', '')
-            ?.replace(/_/g, ' ') || 'Hino',
+            ?.replace(".mp3", "") || "Hino",
           audios[(i + 3) % audios.length]
-            .split('/')
+            ?.split("/")
             .pop()
-            ?.replace('.mp3', '')
-            ?.replace(/_/g, ' ') || 'Hino',
+            ?.replace(".mp3", "") || "Hino",
         ]),
       })),
     []
   );
 
   const [started, setStarted] = useState(false);
-  const [index, setIndex] = useState(() => Math.floor(Math.random() * audios.length));
+  const [index, setIndex] = useState(
+    () => Math.floor(Math.random() * Math.max(audios.length, 1))
+  );
   const [pontos, setPontos] = useState(0);
-  const [msg, setMsg] = useState('');
-  const [efeito, setEfeito] = useState<'acerto' | 'erro' | ''>('');
+  const [msg, setMsg] = useState("");
+  const [efeito, setEfeito] = useState<"acerto" | "erro" | "">("");
   const [erros, setErros] = useState(0);
-  
+
+  const [mostrarNivel, setMostrarNivel] = useState(false);
+  const [gameOverFinal, setGameOverFinal] = useState(false);
+  const [nivelFinal, setNivelFinal] = useState("");
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const somAcertoRef = useRef<HTMLAudioElement | null>(null);
   const somErroRef = useRef<HTMLAudioElement | null>(null);
 
   const atual = perguntas[index];
-  const progresso = ((index + 1) / perguntas.length) * 100;
+  const progresso = ((index + 1) / Math.max(perguntas.length, 1)) * 100;
   const limiteErros = 3;
+
+  function getNivel(acertos: number) {
+    if (acertos === 1) return "VISITANTE";
+    if (acertos >= 2 && acertos <= 4) return "ALMA SEDENTA";
+    if (acertos >= 5 && acertos <= 15) return "TESTEMUNHADO";
+    if (acertos >= 16 && acertos <= 30) return "NOVO BATIZADO";
+    if (acertos >= 31 && acertos <= 40) return "VELHO NA GRAÇA";
+    if (acertos >= 41 && acertos <= 50) return "NASCIDO NA GRAÇA";
+    if (acertos > 50) return "ANCIÃO";
+    return "VISITANTE";
+  }
+
+  function getImagemNivel(nivel: string) {
+    switch (nivel) {
+      case "VISITANTE":
+        return "/images/visitante.png";
+      case "ALMA SEDENTA":
+        return "/images/alma-sedenta.png";
+      case "TESTEMUNHADO":
+        return "/images/testemunhado.png";
+      case "NOVO BATIZADO":
+        return "/images/novo-batizado.png";
+      case "VELHO NA GRAÇA":
+        return "/images/velho-na-graca.png";
+      case "NASCIDO NA GRAÇA":
+        return "/images/nascido-na-graca.png";
+      case "ANCIÃO":
+        return "/images/anciao.png";
+      default:
+        return "/images/visitante.png";
+    }
+  }
 
   function tocar() {
     const audio = audioRef.current;
@@ -168,96 +192,133 @@ export default function AcerteOHinoApp() {
     audio.currentTime = 0;
     audio.src = atual.audio;
     audio.load();
-
-    audio
-      .play()
-      .then(() => {
-        // áudio iniciado com sucesso
-      })
-      .catch((erro) => {
-        console.log('Erro ao reproduzir áudio:', erro);
-        setMsg('⚠ Não foi possível reproduzir o áudio. Verifique a pasta /public/audios');
-      });
+    audio.play().catch(() => {
+      setMsg("Erro ao reproduzir o áudio");
+    });
   }
 
-  function responder(opcao: string) {
-        if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+  function irParaTelaNivel() {
+  // garante que a tela de game over não abra antes
+  setGameOverFinal(false);
+  const nivel = getNivel(pontos);
+  setNivelFinal(nivel);
+  setMostrarNivel(true);
+  setTempoNivel(100);
+
+  let progresso = 100;
+
+  const intervalo = setInterval(() => {
+    progresso -= 10;
+    setTempoNivel(progresso);
+
+    if (progresso <= 0) {
+      clearInterval(intervalo);
+      setMostrarNivel(false);
+      setGameOverFinal(true);
     }
+  }, 1000);
+}
 
-    const acertou = opcao === atual.resposta;
+  function continuarParaGameOver() {
+  setMostrarNivel(false);
+  setGameOverFinal(true);
+}
 
-    if (acertou) {
-      setEfeito('acerto');
-      somAcertoRef.current?.play();
-      setPontos((valor) => valor + 1);
-    } else {
-      setEfeito('erro');
-      somErroRef.current?.play();
-      setErros((valor) => {
-        const novoTotal = valor + 1;
+// contador visual de 10 segundos
+const [tempoNivel, setTempoNivel] = useState(100);
 
-        if (novoTotal >= limiteErros) {
-          setMsg('❌ Game Over! Você errou 3 hinos. Reiniciando...');
-
-          setTimeout(() => {
-            reiniciar();
-          }, 1500);
-        }
-
-        return novoTotal;
-      });
-    }
-
-    setMsg(
-      acertou
-        ? '✅ Acertou!'
-        : `❌ Errou! Resposta correta: ${atual.resposta}`
-    );
-
-    setTimeout(() => {
-      if (!acertou && erros + 1 >= limiteErros) {
-        return;
-      }
-
-      setMsg('');
-      setEfeito('');
-
-      if (index < perguntas.length - 1) {
-        setIndex((valor) => valor + 1);
-      } else {
-        setStarted(false);
-        setIndex(audios.length);
-      }
-    }, 3000);
-  }
 
   function reiniciar() {
     setStarted(false);
-    setIndex(Math.floor(Math.random() * audios.length));
+    setIndex(Math.floor(Math.random() * Math.max(audios.length, 1)));
     setPontos(0);
     setErros(0);
-    setMsg('');
+    setMsg("");
+    setEfeito("");
+    setMostrarNivel(false);
+    setGameOverFinal(false);
+    setNivelFinal("");
+  }
+
+  function responder(opcao: string) {
+    if (!atual) return;
+
+    audioRef.current?.pause();
+    if (audioRef.current) audioRef.current.currentTime = 0;
+
+    const limparTexto = (texto: string) => texto.toLowerCase().trim().replace(/_/g, " ").replace(/\\s+/g, " ");
+
+    const acertou = limparTexto(opcao) === limparTexto(atual.resposta);
+
+    if (acertou) {
+      setPontos((v) => v + 1);
+      setEfeito("acerto");
+      somAcertoRef.current?.play();
+      setMsg("✅ Acertou!");
+    } else {
+      setEfeito("erro");
+      somErroRef.current?.play();
+      setMsg(`❌ Errou! Resposta correta: ${atual.resposta}`);
+
+      setErros((v) => {
+        const total = v + 1;
+        if (total >= limiteErros) {
+          setTimeout(() => {
+            // primeiro mostra a tela de nível
+            irParaTelaNivel();
+          }, 1500);
+        }
+        return total;
+      });
+    }
+
+    setTimeout(() => {
+      if (!acertou && erros + 1 >= limiteErros) return;
+
+      setMsg("");
+      setEfeito("");
+
+      if (index < perguntas.length - 1) {
+        setIndex((v) => v + 1);
+      } else {
+        // terminou todas as perguntas → mostrar nível primeiro
+        irParaTelaNivel();
+      }
+    }, 2500);
   }
 
   const fundo =
-    'min-h-screen bg-[url("/images/background.jpg")] bg-cover bg-center bg-no-repeat text-slate-800 flex items-center justify-center p-4';
+    'min-h-screen bg-[url("/images/background.jpg")] bg-cover bg-center bg-no-repeat flex items-center justify-center p-4';
 
-  if (index >= audios.length) {
+  if (mostrarNivel) {
     return (
       <div className={fundo}>
-        {efeito && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none text-8xl animate-bounce">
-          {efeito === 'acerto' ? '🎉✅✨' : '❌😢⚠️'}
-        </div>
-      )}
-
-      <Card className="w-full max-w-md rounded-2xl border border-amber-200 bg-white/90 shadow-2xl">
+        <Card className="w-full max-w-md bg-white/90">
           <CardContent className="p-6 text-center space-y-4">
-            <div className="text-6xl animate-bounce">🏆🎉✨</div>
-            <h1 className="text-3xl font-bold text-pink-600">Fim do Jogo</h1>
-            <p className="text-lg font-semibold">🌟 Você acertou {pontos} de {audios.length} hinos! 🌟</p>
+            <img src={getImagemNivel(nivelFinal)} alt={nivelFinal} className="w-72 mx-auto rounded-2xl" />
+            <h1 className="text-3xl font-bold">Seu Nível</h1>
+            <p className="text-xl font-semibold">{nivelFinal}</p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Próxima tela em alguns segundos...</p>
+              <Progress value={tempoNivel} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // quando atingir 3 erros também mostrar primeiro a tela de nível
+// troque setGameOverFinal(true) por irParaTelaNivel()
+
+if (gameOverFinal) {
+    return (
+      <div className={fundo}>
+        <Card className="w-full max-w-md bg-white/90">
+          <CardContent className="p-6 text-center space-y-4">
+            <img src="/images/game-over.png" alt="Game Over" className="w-80 mx-auto rounded-2xl" />
+            <h1 className="text-3xl font-bold">GAME OVER</h1>
+            <p>Você acertou {pontos} hinos</p>
             <Button className="w-full" onClick={reiniciar}>
               Jogar Novamente
             </Button>
@@ -273,10 +334,9 @@ export default function AcerteOHinoApp() {
       <audio ref={somAcertoRef} src="/sons/acerto.mp3" preload="auto" />
       <audio ref={somErroRef} src="/sons/erro.mp3" preload="auto" />
 
-      <Card className="w-full max-w-md rounded-2xl border border-amber-200 bg-white/90 shadow-2xl">
+      <Card className="w-full max-w-md bg-white/90">
         <CardContent className="p-6 space-y-4">
-          <div className="text-center text-6xl animate-bounce">🎵🎷🎹</div>
-          <h1 className="text-3xl font-bold text-center text-blue-700">🎶 Acerte o Hino 🎶</h1>
+          <h1 className="text-3xl font-bold text-center">🎶 Acerte o Hino 🎶</h1>
 
           {!started ? (
             <Button className="w-full" onClick={() => setStarted(true)}>
@@ -284,22 +344,19 @@ export default function AcerteOHinoApp() {
             </Button>
           ) : (
             <>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span></span>
-                  <span>{pontos} pts | {erros}/3 erros</span>
-                </div>
-                <Progress value={progresso} />
+              <div className="flex justify-between text-sm">
+                <span>{pontos} pts</span>
+                <span>{erros}/3 erros</span>
               </div>
+
+              <Progress value={progresso} />
 
               <Button className="w-full" onClick={tocar}>
                 ▶ Ouvir trecho
               </Button>
 
-              
-
               <div className="grid gap-2">
-                {atual.opcoes.map((opcao) => (
+                {atual?.opcoes.map((opcao) => (
                   <Button
                     key={opcao}
                     variant="outline"

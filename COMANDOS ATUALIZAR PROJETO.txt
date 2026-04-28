@@ -1,0 +1,5 @@
+git add .
+
+git commit -m "atualização do site"
+
+git push
