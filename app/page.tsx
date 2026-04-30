@@ -3,15 +3,10 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Play, Heart, PartyPopper, Trophy, Music } from "lucide-react";
 
-export default function AcerteOHinoApp() {
-  function embaralhar(arr: string[]) {
-    return [...arr].sort(() => Math.random() - 0.5);
-  }
-
-  // MANTENHA AQUI SUA LISTA COMPLETA DE AUDIOS
-  const audios = [
+// --- BANCO DE DADOS DE ÁUDIOS ---
+const AUDIOS_DATA = [
   "/audios/Hino 01 CRISTO MEU MESTRE.mp3",
   "/audios/Hino 05 - A Rocha celestial.mp3",
   "/audios/Hino 100 Todos juntos_ jubilemos.mp3",
@@ -101,227 +96,125 @@ export default function AcerteOHinoApp() {
   "/audios/Hino 89 Oh Grande Deus.mp3"
   ];
 
-  const perguntas = useMemo(
-    () =>
-      Array.from({ length: audios.length }, (_, i) => ({
-        id: i + 1,
-        resposta:
-          audios[i]
-            ?.split("/")
-            .pop()
-            ?.replace(".mp3", "")
-            ?.replace(/_/g, " ") || `Hino ${i + 1}`,
-        audio: audios[i],
-        opcoes: embaralhar(
-          [
-            audios[i], // resposta correta
+const NIVEIS = [
+  { valor: 2, nome: "VISITANTE", img: "/images/visitante.png" },
+  { valor: 6, nome: "ALMA SEDENTA", img: "/images/almasedenta.png" },
+  { valor: 10, nome: "TESTEMUNHADO", img: "/images/testemunhado.png" },
+  { valor: 20, nome: "NOVO BATIZADO", img: "/images/novobatizado.png" },
+  { valor: 30, nome: "VELHO NA GRAÇA", img: "/images/velhonagraca.png" },
+  { valor: 40, nome: "NASCIDO NA GRAÇA", img: "/images/nascidonagraca.png" },
+  { valor: 50, nome: "ANCIÃO", img: "/images/anciao.png" },
+];
 
-            ...embaralhar(
-              audios.filter((_, index) => index !== i)
-            ).slice(0, 3) // pega 3 erradas aleatórias
-          ].map((audio) =>
-            audio
-              .split("/")
-              .pop()
-              ?.replace(".mp3", "")
-              ?.replace(/_/g, " ") || "Hino"
-          )
-        ),
-      })),
-    []
-  );
-
+export default function AcerteOHinoApp() {
   const [started, setStarted] = useState(false);
-  const [index, setIndex] = useState(
-    () => Math.floor(Math.random() * Math.max(audios.length, 1))
-  );
+  const [index, setIndex] = useState(0);
   const [pontos, setPontos] = useState(0);
-  const [msg, setMsg] = useState("");
-  const [efeito, setEfeito] = useState<"acerto" | "erro" | "">("");
   const [erros, setErros] = useState(0);
-
-  const [mostrarNivel, setMostrarNivel] = useState(false);
-  const [gameOverFinal, setGameOverFinal] = useState(false);
-  const [nivelFinal, setNivelFinal] = useState("");
+  const [bloquearCliques, setBloquearCliques] = useState(false);
+  const [subiuDeNivel, setSubiuDeNivel] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const somAcertoRef = useRef<HTMLAudioElement | null>(null);
-  const somErroRef = useRef<HTMLAudioElement | null>(null);
+  const efeitoRef = useRef<HTMLAudioElement | null>(null);
 
-  const atual = perguntas[index];
-  const progresso = ((index + 1) / Math.max(perguntas.length, 1)) * 100;
-  const limiteErros = 3;
+  const extrairNome = (path: string) => 
+    path.split("/").pop()?.replace(".mp3", "").replace(/_/g, " ").replace(/-/g, "").trim() || "";
 
-  function getNivel(acertos: number) {
-    if (acertos === 1) return "VISITANTE";
-    if (acertos >= 2 && acertos <= 4) return "ALMA SEDENTA";
-    if (acertos >= 5 && acertos <= 15) return "TESTEMUNHADO";
-    if (acertos >= 16 && acertos <= 30) return "NOVO BATIZADO";
-    if (acertos >= 31 && acertos <= 40) return "VELHO NA GRAÇA";
-    if (acertos >= 41 && acertos <= 50) return "NASCIDO NA GRAÇA";
-    if (acertos > 50) return "ANCIÃO";
-    return "VISITANTE";
-  }
+  const quizData = useMemo(() => {
+    return AUDIOS_DATA.map((path) => {
+      const correta = extrairNome(path);
+      const outrasOpcoes = AUDIOS_DATA
+        .filter(p => p !== path)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(p => extrairNome(p));
 
-  function getImagemNivel(nivel: string) {
-    switch (nivel) {
-      case "VISITANTE":
-        return "/images/visitante.png";
-      case "ALMA SEDENTA":
-        return "/images/almasedenta.png";
-      case "TESTEMUNHADO":
-        return "/images/testemunhado.png";
-      case "NOVO BATIZADO":
-        return "/images/novobatizado.png";
-      case "VELHO NA GRAÇA":
-        return "/images/velhonagraca.png";
-      case "NASCIDO NA GRAÇA":
-        return "/images/nascidonagraca.png";
-      case "ANCIÃO":
-        return "/images/anciao.png";
-      default:
-        return "/images/visitante.png";
-    }
-  }
+      return {
+        audio: path,
+        resposta: correta,
+        opcoes: [correta, ...outrasOpcoes].sort(() => Math.random() - 0.5)
+      };
+    }).sort(() => Math.random() - 0.5);
+  }, []);
 
-  function tocar() {
-    const audio = audioRef.current;
-    if (!audio || !atual?.audio) return;
+  const perguntaAtual = quizData[index % quizData.length];
 
-    audio.pause();
-    audio.currentTime = 0;
-    audio.src = atual.audio;
-    audio.load();
-    audio.play().catch(() => {
-      setMsg("Erro ao reproduzir o áudio");
-    });
-  }
+  const nivelAtualInfo = useMemo(() => {
+    return [...NIVEIS].reverse().find(n => pontos >= n.valor) || { nome: "INICIANTE", img: "/images/visitante.png" };
+  }, [pontos]);
 
-  function irParaTelaNivel() {
-  // garante que a tela de game over não abra antes
-  setGameOverFinal(false);
-  const nivel = getNivel(pontos);
-  setNivelFinal(nivel);
-  setMostrarNivel(true);
-  setTempoNivel(100);
+  const responder = (opcao: string) => {
+    if (bloquearCliques) return;
+    setBloquearCliques(true);
 
-  let progresso = 100;
-
-  const intervalo = setInterval(() => {
-    progresso -= 10;
-    setTempoNivel(progresso);
-
-    if (progresso <= 0) {
-      clearInterval(intervalo);
-      setMostrarNivel(false);
-      setGameOverFinal(true);
-    }
-  }, 1000);
-}
-
-  function continuarParaGameOver() {
-  setMostrarNivel(false);
-  setGameOverFinal(true);
-}
-
-// contador visual de 10 segundos
-const [tempoNivel, setTempoNivel] = useState(100);
-
-
-  function reiniciar() {
-    setStarted(false);
-    setIndex(Math.floor(Math.random() * Math.max(audios.length, 1)));
-    setPontos(0);
-    setErros(0);
-    setMsg("");
-    setEfeito("");
-    setMostrarNivel(false);
-    setGameOverFinal(false);
-    setNivelFinal("");
-  }
-
-  function responder(opcao: string) {
-    if (!atual) return;
-
-    audioRef.current?.pause();
-    if (audioRef.current) audioRef.current.currentTime = 0;
-
-    const limparTexto = (texto: string) => texto.toLowerCase().trim().replace(/_/g, " ").replace(/\s+/g, " ");
-
-    const acertou = limparTexto(opcao) === limparTexto(atual.resposta);
-
-    if (acertou) {
-      setPontos((v) => v + 1);
-      setEfeito("acerto");
-      somAcertoRef.current?.play();
-      setMsg("✅ Acertou!");
-    } else {
-      setEfeito("erro");
-      somErroRef.current?.play();
-      setMsg(`❌ Errou! Resposta correta: ${atual.resposta}`);
-
-      setErros((v) => {
-        const total = v + 1;
-        if (total >= limiteErros) {
-          setTimeout(() => {
-            // primeiro mostra a tela de nível
-            irParaTelaNivel();
-          }, 1500);
-        }
-        return total;
-      });
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
 
-    setTimeout(() => {
-      if (!acertou && erros + 1 >= limiteErros) return;
+    if (opcao === perguntaAtual.resposta) {
+      if (efeitoRef.current) { efeitoRef.current.src = "/audios/acerto.mp3"; efeitoRef.current.play(); }
+      const novosPontos = pontos + 1;
+      setPontos(novosPontos);
 
-      setMsg("");
-      setEfeito("");
-
-      if (index < perguntas.length - 1) {
-        setIndex((v) => v + 1);
+      if (NIVEIS.some(n => n.valor === novosPontos)) {
+        setTimeout(() => setSubiuDeNivel(true), 1000);
       } else {
-        // terminou todas as perguntas → mostrar nível primeiro
-        irParaTelaNivel();
+        setTimeout(() => { setIndex(i => i + 1); setBloquearCliques(false); }, 1500);
       }
-    }, 2500);
-  }
+    } else {
+      if (efeitoRef.current) { efeitoRef.current.src = "/audios/erro.mp3"; efeitoRef.current.play(); }
+      const novosErros = erros + 1;
+      setErros(novosErros);
+      if (novosErros >= 3) {
+        setTimeout(() => setGameOver(true), 800);
+      } else {
+        setTimeout(() => { setIndex(i => i + 1); setBloquearCliques(false); }, 1500);
+      }
+    }
+  };
 
-  const fundo =
-    'min-h-screen bg-[url("/images/background.jpg")] bg-cover bg-center bg-no-repeat flex items-center justify-center p-4';
+  // --- COMPONENTE DE BACKGROUND PERSONALIZADO ---
+  const MainBackground = () => (
+    <div className="fixed inset-0 -z-10 overflow-hidden bg-black">
+      {/* 
+          Abaixo, aponte para o caminho da sua imagem de background. 
+          Ex: /images/meu-fundo.jpg 
+      */}
+      <div 
+        className="absolute inset-0 bg-[url('/images/background.png')] bg-cover bg-center bg-no-repeat opacity-40 scale-105" 
+        style={{ filter: 'blur(4px)' }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
+    </div>
+  );
 
-  if (mostrarNivel) {
+  if (gameOver) return (
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      <MainBackground />
+      <Card className="w-full max-w-md bg-zinc-950/90 border-red-900 border-2 text-white text-center backdrop-blur-md">
+        <CardContent className="p-8 space-y-6">
+          <img src="/images/gameover.png" alt="Game Over" className="w-full rounded-lg shadow-2xl border border-red-900/50" />
+          <h1 className="text-3xl font-black text-red-600 italic uppercase">Fim de Linha</h1>
+          <Button onClick={() => window.location.reload()} className="w-full h-14 bg-red-900 hover:bg-red-800 text-white font-bold uppercase">Tentar Novamente</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (subiuDeNivel) {
+    const nivelConquistado = NIVEIS.find(n => n.valor === pontos);
     return (
-      <div className={fundo}>
-        <Card className="w-full max-w-md bg-white/90">
-          <CardContent className="p-6 text-center space-y-4">
-            <img src={getImagemNivel(nivelFinal)} alt={nivelFinal} className="w-72 mx-auto rounded-2xl" />
-            <h1 className="text-3xl font-bold">Seu Nível</h1>
-            <p className="text-xl font-semibold">{nivelFinal}</p>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Próxima tela em alguns segundos...</p>
-              <Progress value={tempoNivel} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // quando atingir 3 erros também mostrar primeiro a tela de nível
-// troque setGameOverFinal(true) por irParaTelaNivel()
-
-if (gameOverFinal) {
-    return (
-      <div className={fundo}>
-        <Card className="w-full max-w-md bg-white/90">
-          <CardContent className="p-6 text-center space-y-4">
-            <img src="/images/game-over.png" alt="Game Over" className="w-80 mx-auto rounded-2xl" />
-            <h1 className="text-3xl font-bold">GAME OVER</h1>
-            <p>Você acertou {pontos} hinos</p>
-            <Button className="w-full" onClick={reiniciar}>
-              Jogar Novamente
-            </Button>
+      <div className="min-h-screen flex items-center justify-center p-4 relative">
+        <MainBackground />
+        <Card className="w-full max-w-md bg-zinc-900/90 border-yellow-500 border-2 text-white text-center animate-in zoom-in duration-300 backdrop-blur-md">
+          <CardContent className="p-8 space-y-6">
+            <PartyPopper className="w-12 h-12 mx-auto text-yellow-500" />
+            <h1 className="text-2xl font-black uppercase">Novo Nível!</h1>
+            <img src={nivelConquistado?.img} className="w-48 h-48 mx-auto rounded-xl object-cover border-4 border-yellow-500/20 shadow-2xl" />
+            <h2 className="text-3xl font-bold text-yellow-500">{nivelConquistado?.nome}</h2>
+            <Button onClick={() => { setSubiuDeNivel(false); setIndex(i => i + 1); setBloquearCliques(false); }} className="w-full h-16 bg-yellow-600 hover:bg-yellow-500 text-white text-xl font-bold">CONTINUAR</Button>
           </CardContent>
         </Card>
       </div>
@@ -329,47 +222,73 @@ if (gameOverFinal) {
   }
 
   return (
-    <div className={fundo}>
-      <audio ref={audioRef} preload="auto" />
-      <audio ref={somAcertoRef} src="/sons/acerto.mp3" preload="auto" />
-      <audio ref={somErroRef} src="/sons/erro.mp3" preload="auto" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      <MainBackground />
+      <audio ref={audioRef} />
+      <audio ref={efeitoRef} />
+      
+      <Card className="w-full max-w-md bg-zinc-900/70 border-white/10 text-white shadow-2xl overflow-hidden backdrop-blur-lg">
+        <div className="h-1.5 bg-white/10">
+          <div className="h-full bg-yellow-500 transition-all duration-700 shadow-[0_0_15px_rgba(234,179,8,0.6)]" style={{ width: `${(pontos / 50) * 100}%` }} />
+        </div>
 
-      <Card className="w-full max-w-md bg-white/90">
-        <CardContent className="p-6 space-y-4">
-          <h1 className="text-3xl font-bold text-center">🎶 Acerte o Hino 🎶</h1>
+        <CardContent className="p-6 space-y-8">
+          <header className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute -inset-1 bg-yellow-500 rounded-full blur opacity-30" />
+                <img src={nivelAtualInfo.img} className="relative w-12 h-12 rounded-full border-2 border-yellow-500 object-cover shadow-lg" />
+              </div>
+              <div>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">Nível Atual</p>
+                <span className="text-sm font-black text-yellow-500">{nivelAtualInfo.nome}</span>
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              {[...Array(3)].map((_, i) => (
+                <Heart key={i} className={`w-6 h-6 transition-all ${i < 3 - erros ? "text-red-500 fill-red-500 shadow-sm" : "text-white/10 fill-transparent"}`} />
+              ))}
+            </div>
+          </header>
 
           {!started ? (
-            <Button className="w-full" onClick={() => setStarted(true)}>
-              INICIAR
-            </Button>
+            <div className="text-center py-10 space-y-8">
+              <div className="flex justify-center relative">
+                <div className="absolute inset-0 bg-yellow-500 blur-3xl opacity-20" />
+                <Music className="relative w-20 h-20 text-yellow-500 animate-pulse" />
+              </div>
+              <h1 className="text-5xl font-black italic tracking-tighter text-white drop-shadow-2xl">QUIZ HINOS</h1>
+              <Button onClick={() => setStarted(true)} className="w-full h-20 text-2xl font-black bg-yellow-500 text-black hover:bg-yellow-400 border-none transition-transform active:scale-95 shadow-xl">JOGAR</Button>
+            </div>
           ) : (
-            <>
-              <div className="flex justify-between text-sm">
-                <span>{pontos} pts</span>
-                <span>{erros}/3 erros</span>
+            <div className="space-y-8">
+              <div className="flex justify-center">
+                <Button 
+                  onClick={() => { if (audioRef.current) { audioRef.current.src = perguntaAtual.audio; audioRef.current.play(); } }}
+                  className="w-24 h-24 rounded-full bg-white text-black hover:bg-zinc-200 shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-all active:scale-90"
+                >
+                  <Play className="w-10 h-10 fill-current ml-1" />
+                </Button>
               </div>
 
-              <Progress value={progresso} />
-
-              <Button className="w-full" onClick={tocar}>
-                ▶ Ouvir trecho
-              </Button>
-
-              <div className="grid gap-2">
-                {atual?.opcoes.map((opcao) => (
+              <div className="grid gap-3">
+                {perguntaAtual.opcoes.map((opcao) => (
                   <Button
                     key={opcao}
                     variant="outline"
-                    className="w-full justify-start"
+                    disabled={bloquearCliques}
                     onClick={() => responder(opcao)}
+                    className="h-auto py-5 px-6 border-white/5 bg-white/5 hover:bg-white/10 text-zinc-100 font-bold text-base transition-colors backdrop-blur-sm"
                   >
                     {opcao}
                   </Button>
                 ))}
               </div>
-
-              {msg && <p className="text-center text-sm">{msg}</p>}
-            </>
+              <div className="flex justify-between items-center px-2">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Score: {pontos}/50</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Erros: {erros}/3</span>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
