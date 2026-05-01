@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Heart, PartyPopper, Trophy, Music } from "lucide-react";
+import { Play, Heart, PartyPopper, Music, Download } from "lucide-react";
 
 // --- BANCO DE DADOS DE ÁUDIOS ---
 const AUDIOS_DATA = [
@@ -94,7 +94,7 @@ const AUDIOS_DATA = [
   "/audios/Hino 76 - Cristo Jesus sua mão me dá.mp3",
   "/audios/Hino 79 da CCB - Bom é estarmos nós aqui.mp3",
   "/audios/Hino 89 Oh Grande Deus.mp3"
-  ];
+];
 
 const NIVEIS = [
   { valor: 2, nome: "VISITANTE", img: "/images/visitante.png" },
@@ -114,9 +114,32 @@ export default function AcerteOHinoApp() {
   const [bloquearCliques, setBloquearCliques] = useState(false);
   const [subiuDeNivel, setSubiuDeNivel] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const efeitoRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setTimeout(() => setShowInstallModal(true), 1500);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+      setShowInstallModal(false);
+    }
+  };
 
   const extrairNome = (path: string) => 
     path.split("/").pop()?.replace(".mp3", "").replace(/_/g, " ").replace(/-/g, "").trim() || "";
@@ -175,13 +198,8 @@ export default function AcerteOHinoApp() {
     }
   };
 
-  // --- COMPONENTE DE BACKGROUND PERSONALIZADO ---
   const MainBackground = () => (
     <div className="fixed inset-0 -z-10 overflow-hidden bg-black">
-      {/* 
-          Abaixo, aponte para o caminho da sua imagem de background. 
-          Ex: /images/meu-fundo.jpg 
-      */}
       <div 
         className="absolute inset-0 bg-[url('/images/background.png')] bg-cover bg-center bg-no-repeat opacity-40 scale-105" 
         style={{ filter: 'blur(4px)' }}
@@ -190,108 +208,103 @@ export default function AcerteOHinoApp() {
     </div>
   );
 
-  if (gameOver) return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      <MainBackground />
-      <Card className="w-full max-w-md bg-zinc-950/90 border-red-900 border-2 text-white text-center backdrop-blur-md">
-        <CardContent className="p-8 space-y-6">
-          <img src="/images/gameover.png" alt="Game Over" className="w-full rounded-lg shadow-2xl border border-red-900/50" />
-          <h1 className="text-3xl font-black text-red-600 italic uppercase">Fim de Linha</h1>
-          <Button onClick={() => window.location.reload()} className="w-full h-14 bg-red-900 hover:bg-red-800 text-white font-bold uppercase">Tentar Novamente</Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  if (subiuDeNivel) {
-    const nivelConquistado = NIVEIS.find(n => n.valor === pontos);
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative">
-        <MainBackground />
-        <Card className="w-full max-w-md bg-zinc-900/90 border-yellow-500 border-2 text-white text-center animate-in zoom-in duration-300 backdrop-blur-md">
-          <CardContent className="p-8 space-y-6">
-            <PartyPopper className="w-12 h-12 mx-auto text-yellow-500" />
-            <h1 className="text-2xl font-black uppercase">Novo Nível!</h1>
-            <img src={nivelConquistado?.img} className="w-48 h-48 mx-auto rounded-xl object-cover border-4 border-yellow-500/20 shadow-2xl" />
-            <h2 className="text-3xl font-bold text-yellow-500">{nivelConquistado?.nome}</h2>
-            <Button onClick={() => { setSubiuDeNivel(false); setIndex(i => i + 1); setBloquearCliques(false); }} className="w-full h-16 bg-yellow-600 hover:bg-yellow-500 text-white text-xl font-bold">CONTINUAR</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       <MainBackground />
       <audio ref={audioRef} />
       <audio ref={efeitoRef} />
-      
-      <Card className="w-full max-w-md bg-zinc-900/70 border-white/10 text-white shadow-2xl overflow-hidden backdrop-blur-lg">
-        <div className="h-1.5 bg-white/10">
-          <div className="h-full bg-yellow-500 transition-all duration-700 shadow-[0_0_15px_rgba(234,179,8,0.6)]" style={{ width: `${(pontos / 50) * 100}%` }} />
+
+      {showInstallModal && deferredPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in zoom-in duration-500">
+          <Card className="w-full max-w-sm bg-zinc-900 border-yellow-500 border-2 text-white shadow-2xl">
+            <CardContent className="p-8 text-center space-y-6">
+              <Download className="w-14 h-14 text-yellow-500 mx-auto animate-bounce" />
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black uppercase tracking-tighter italic">Instalar Agora</h2>
+                <p className="text-zinc-400 text-sm">Tenha acesso imediato ao Quiz Hinos diretamente na sua tela inicial.</p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button onClick={handleInstallClick} className="w-full h-16 bg-yellow-500 text-black font-black uppercase text-lg hover:bg-yellow-400">INSTALAR APLICATIVO</Button>
+                <button onClick={() => setShowInstallModal(false)} className="text-zinc-500 text-xs font-bold uppercase pt-2">Agora não</button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-
-        <CardContent className="p-6 space-y-8">
-          <header className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute -inset-1 bg-yellow-500 rounded-full blur opacity-30" />
-                <img src={nivelAtualInfo.img} className="relative w-12 h-12 rounded-full border-2 border-yellow-500 object-cover shadow-lg" />
+      )}
+      
+      {gameOver ? (
+        <Card className="w-full max-w-md bg-zinc-950/90 border-red-900 border-2 text-white text-center backdrop-blur-md">
+          <CardContent className="p-8 space-y-6">
+            <img src="/images/gameover.png" alt="Fim de Jogo" className="w-full rounded-lg" />
+            <h1 className="text-3xl font-black text-red-600 italic uppercase">Fim de Linha</h1>
+            <Button onClick={() => window.location.reload()} className="w-full h-14 bg-red-900 hover:bg-red-800 text-white font-bold uppercase">Tentar Novamente</Button>
+          </CardContent>
+        </Card>
+      ) : subiuDeNivel ? (
+        <Card className="w-full max-w-md bg-zinc-900/90 border-yellow-500 border-2 text-white text-center animate-in zoom-in duration-300 backdrop-blur-md">
+          <CardContent className="p-8 space-y-6">
+            <PartyPopper className="w-12 h-12 mx-auto text-yellow-500" />
+            <h1 className="text-2xl font-black uppercase">Novo Nível!</h1>
+            <img src={NIVEIS.find(n => n.valor === pontos)?.img} className="w-48 h-48 mx-auto rounded-xl object-cover border-4 border-yellow-500/20" alt="Nível" />
+            <h2 className="text-3xl font-bold text-yellow-500">{NIVEIS.find(n => n.valor === pontos)?.nome}</h2>
+            <Button onClick={() => { setSubiuDeNivel(false); setIndex(i => i + 1); setBloquearCliques(false); }} className="w-full h-16 bg-yellow-600 hover:bg-yellow-500 text-white text-xl font-bold">CONTINUAR</Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="w-full max-w-md bg-zinc-900/70 border-white/10 text-white shadow-2xl overflow-hidden backdrop-blur-lg">
+          <div className="h-1.5 bg-white/10">
+            <div className="h-full bg-yellow-500 transition-all duration-700 shadow-[0_0_15px_rgba(234,179,8,0.6)]" style={{ width: `${(pontos / 50) * 100}%` }} />
+          </div>
+          <CardContent className="p-6 space-y-8">
+            <header className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <img src={nivelAtualInfo.img} className="w-12 h-12 rounded-full border-2 border-yellow-500 object-cover" alt="Perfil" />
+                <div>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase">Nível Atual</p>
+                  <span className="text-sm font-black text-yellow-500">{nivelAtualInfo.nome}</span>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">Nível Atual</p>
-                <span className="text-sm font-black text-yellow-500">{nivelAtualInfo.nome}</span>
-              </div>
-            </div>
-            <div className="flex gap-1.5">
-              {[...Array(3)].map((_, i) => (
-                <Heart key={i} className={`w-6 h-6 transition-all ${i < 3 - erros ? "text-red-500 fill-red-500 shadow-sm" : "text-white/10 fill-transparent"}`} />
-              ))}
-            </div>
-          </header>
-
-          {!started ? (
-            <div className="text-center py-10 space-y-8">
-              <div className="flex justify-center relative">
-                <div className="absolute inset-0 bg-yellow-500 blur-3xl opacity-20" />
-                <Music className="relative w-20 h-20 text-yellow-500 animate-pulse" />
-              </div>
-              <h1 className="text-5xl font-black italic tracking-tighter text-white drop-shadow-2xl">QUIZ HINOS</h1>
-              <Button onClick={() => setStarted(true)} className="w-full h-20 text-2xl font-black bg-yellow-500 text-black hover:bg-yellow-400 border-none transition-transform active:scale-95 shadow-xl">JOGAR</Button>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              <div className="flex justify-center">
-                <Button 
-                  onClick={() => { if (audioRef.current) { audioRef.current.src = perguntaAtual.audio; audioRef.current.play(); } }}
-                  className="w-24 h-24 rounded-full bg-white text-black hover:bg-zinc-200 shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-all active:scale-90"
-                >
-                  <Play className="w-10 h-10 fill-current ml-1" />
-                </Button>
-              </div>
-
-              <div className="grid gap-3">
-                {perguntaAtual.opcoes.map((opcao) => (
-                  <Button
-                    key={opcao}
-                    variant="outline"
-                    disabled={bloquearCliques}
-                    onClick={() => responder(opcao)}
-                    className="h-auto py-5 px-6 border-white/5 bg-white/5 hover:bg-white/10 text-zinc-100 font-bold text-base transition-colors backdrop-blur-sm"
-                  >
-                    {opcao}
-                  </Button>
+              <div className="flex gap-1.5">
+                {[...Array(3)].map((_, i) => (
+                  <Heart key={i} className={`w-6 h-6 transition-all ${i < 3 - erros ? "text-red-500 fill-red-500" : "text-white/10 fill-transparent"}`} />
                 ))}
               </div>
-              <div className="flex justify-between items-center px-2">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Score: {pontos}/50</span>
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Erros: {erros}/3</span>
+            </header>
+
+            {!started ? (
+              <div className="text-center py-10 space-y-8">
+                <Music className="w-20 h-20 text-yellow-500 mx-auto animate-pulse" />
+                <h1 className="text-5xl font-black italic text-white">QUIZ HINOS</h1>
+                <Button onClick={() => setStarted(true)} className="w-full h-20 text-2xl font-black bg-yellow-500 text-black hover:bg-yellow-400 active:scale-95 transition-transform">JOGAR</Button>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="space-y-8">
+                <div className="flex justify-center">
+                  <Button 
+                    onClick={() => { if (audioRef.current) { audioRef.current.src = perguntaAtual.audio; audioRef.current.play(); } }}
+                    className="w-24 h-24 rounded-full bg-white text-black hover:bg-zinc-200 active:scale-90"
+                  >
+                    <Play className="w-10 h-10 fill-current ml-1" />
+                  </Button>
+                </div>
+                <div className="grid gap-3">
+                  {perguntaAtual.opcoes.map((opcao) => (
+                    <Button
+                      key={opcao}
+                      variant="outline"
+                      disabled={bloquearCliques}
+                      onClick={() => responder(opcao)}
+                      className="h-auto py-5 px-6 border-white/5 bg-white/5 hover:bg-white/10 text-zinc-100 font-bold text-base"
+                    >
+                      {opcao}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
